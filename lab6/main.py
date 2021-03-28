@@ -1,23 +1,25 @@
 from random import randrange as rnd, choice
-import tkinter as tk
 import math
 import time
+import pygame
+import pygame.draw as draw
 
-# print (dir(math))
-
-root = tk.Tk()
-fr = tk.Frame(root)
-root.geometry('800x600')
-canvas = tk.Canvas(root, bg='white')
-canvas.pack(fill=tk.BOTH, expand=1)
-#n = int(input())
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+ORANGE = (255,165,0)
+RED = (255, 0, 0)
+FPS = 30
 n = int(2)
 l0 = 20
+zleep = 3
+pygame.init()
+screen = pygame.display.set_mode((800, 600))  # 800, 600
+screen.fill(WHITE)
 
 
 class ball():
     def __init__(self, x=40, y=450):
-        """ Конструктор класса ball
+        """
         Args:
         x - начальное положение мяча по горизонтали
         y - начальное положение мяча по вертикали
@@ -28,30 +30,14 @@ class ball():
         self.vx = 0
         self.vy = 0
         self.color = choice(['blue', 'green', 'red', 'brown'])
-        self.id = canvas.create_oval(
-            self.x - self.r,
-            self.y - self.r,
-            self.x + self.r,
-            self.y + self.r,
-            fill=self.color
-        )
+        draw.circle(screen, self.color, (self.x, self.y), self.r)
         self.live = 30
 
     def set_coords(self):
-        canvas.coords(
-            self.id,
-            self.x - self.r,
-            self.y - self.r,
-            self.x + self.r,
-            self.y + self.r
-        )
+        draw.circle(screen, self.color, (self.x, self.y), self.r)
 
     def move(self):
-        """Переместить мяч по прошествии единицы времени.
-        Метод описывает перемещение мяча за один кадр перерисовки. То есть, обновляет значения
-        self.x и self.y с учетом скоростей self.vx и self.vy, силы гравитации, действующей на мяч,
-        и стен по краям окна (размер окна 800х600).
-        """
+        """Переместить мяч по прошествии единицы времени."""
 
         if self.x >= 800:
             self.vx *= -1
@@ -80,7 +66,7 @@ class gun():
         self.f2_power = 10
         self.f2_on = 0
         self.an = 1
-        self.id = canvas.create_line(20, 450, 50, 420, width=7)
+        self.color = BLACK
 
     def fire2_start(self, event):
         self.f2_on = 1
@@ -89,77 +75,68 @@ class gun():
         """Выстрел мячом.
         Начальные значения компонент скорости мяча vx и vy зависят от положения мыши.
         """
+        x, y = event.pos
         global balls, bullet
         bullet += 1
         new_ball = ball()
         new_ball.r += 5
-        self.an = math.atan((event.y - new_ball.y) / (event.x - new_ball.x))
+        self.an = math.atan((y - new_ball.y) / (x - new_ball.x))
         new_ball.vx = self.f2_power * math.cos(self.an)
         new_ball.vy = self.f2_power * math.sin(self.an)
         balls += [new_ball]
         self.f2_on = 0
         self.f2_power = 10
 
-    def targetting(self, event=0):
+    def targetting(self):
         """Прицеливание. Зависит от положения мыши."""
-        if event:
-            if event.x != 20:
-
-                self.an = math.atan((event.y - 450) / (event.x - 20))
+        [x, y] = pygame.mouse.get_pos()
+        if pygame.mouse.get_pos():
+            if x != 20:
+                self.an = math.atan((y - 450) / (x - 20))
             else:
-                if event.y - 450 > 0:
+                if y - 450 > 0:
                     self.an = math.pi / 2
                 else:
                     self.an = -math.pi / 2
 
         if self.f2_on:
-            canvas.itemconfig(self.id, fill='orange')
+            self.color = ORANGE
         else:
-            canvas.itemconfig(self.id, fill='black')
-        canvas.coords(self.id, 20, 450,
-                      20 + max(self.f2_power, 20) * math.cos(self.an),
-                      450 + max(self.f2_power, 20) * math.sin(self.an)
-                      )
-        for b in balls:
-            b.move()
-        for t in targets:
-            t.move()
+            self.color = BLACK
+
+        draw.line(screen, self.color, (20, 450), (20 + max(self.f2_power, 20) * math.cos(self.an), 450 + max(self.f2_power, 20) * math.sin(self.an)), 7)
 
     def power_up(self):
         if self.f2_on:
             if self.f2_power < 100:
                 self.f2_power += 1
-            canvas.itemconfig(self.id, fill='orange')
+            draw.line(screen, ORANGE, (20, 450), (50, 420), 7)
         else:
-            canvas.itemconfig(self.id, fill='black')
+            draw.line(screen, BLACK, (20, 450), (50, 420), 7)
 
 
 class target():
     def __init__(self):
         self.points = 0
         self.live = 1
-        self.id = canvas.create_oval(0, 0, 0, 0)
+        # draw.circle(screen, RED, 0, 0)
         self.new_target()
 
+
     def new_target(self):
-        """ Инициализация новой цели. """
+        """новая цель. """
         x = self.x = rnd(500, 600)
         y = self.y = rnd(300, 500)
         r = self.r = rnd(20, 50)
         self.vx = 0
         self.vy = 0
         color = self.color = 'red'
-        canvas.coords(self.id, x - r, y - r, x + r, y + r)
-        canvas.itemconfig(self.id, fill=color)
+        draw.circle(screen, color, (x, y), r)
+        # canvas.coords(self.id, x - r, y - r, x + r, y + r)
+        # canvas.itemconfig(self.id, fill=color)
 
     def set_coords(self):
-        canvas.coords(
-            self.id,
-            self.x - self.r,
-            self.y - self.r,
-            self.x + self.r,
-            self.y + self.r
-        )
+        draw.circle(screen, self.color, (self.x, self.y), self.r)
 
     def move(self):
 
@@ -190,24 +167,48 @@ class target():
 
     def hit(self, points=1):
         """Попадание шарика в цель."""
-        canvas.delete(self.id)
+        pygame.display.update()
+        # screen.fill(WHITE)
+        self.x = -50
+        self.y = -50
         self.points += points
 
 
 glob_points = 0
-targets = []
+font = pygame.font.Font(None, 50)
 
-screen1 = canvas.create_text(400, 300, text='', font='28')
+def glob_point():
+    text_score = font.render(str(glob_points), True, BLACK)
+    screen.blit(text_score, [30, 30])
+
+
+targets = []
+squares = []
+
 g1 = gun()
 bullet = 0
 balls = []
-score = canvas.create_text(30,30,text = glob_points,font = '28')
+clock = pygame.time.Clock()
+glob_point()
+lives = 1
+
 
 def empty(event):
     pass
 
 
-def new_game(event=''):
+def hit_happens():
+    global bullet, lives, glob_points, balls
+    screen.fill(WHITE)
+    text = font.render("Вы уничтожили цель за: " + str(bullet) + " выстрелов", True, BLACK)
+    screen.blit(text, [100, 250])
+    pygame.display.update()
+    balls = []
+    lives = 0
+    glob_points += 1
+
+
+def new_game():
     global gun, t1, screen1, balls, bullet, glob_points, targets
     for i in range(n):
         targets.append(target())
@@ -216,42 +217,53 @@ def new_game(event=''):
         i.live = 1
     bullet = 0
     balls = []
-    canvas.bind('<Button-1>', g1.fire2_start)
-    canvas.bind('<ButtonRelease-1>', g1.fire2_end)
-    canvas.bind('<Motion>', g1.targetting)
-    canvas.itemconfig(screen1, text='')
+
 
     z = 0.03
     all_live = n
-    while all_live or balls:
-        for b in balls:
-            b.move()
+    while (all_live or balls):
+        clock.tick(FPS)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                g1.fire2_start(event)
+            elif event.type == pygame.MOUSEBUTTONUP:
+                g1.fire2_end(event)
+
+        g1.targetting()
         for t in targets:
             t.move()
-            for b in balls:
+            t.set_coords()
+        for s in squares:
+            s.move()
+            s.set_coords()
+        for b in balls:
+            b.move()
+            b.set_coords()
+            for t in targets:
                 if b.hittest(t) and t.live:
                     t.live = 0
                     t.hit()
                     all_live -= 1
                     glob_points += 1
-                    canvas.itemconfig(score, text=glob_points)
-
+                    glob_point()
+                if not all_live:
+                    hit_happens()
             if not all_live:
-                canvas.bind('<Button-1>', empty)
-                canvas.bind('<ButtonRelease-1>', empty)
-                canvas.itemconfig(screen1, text='Вы уничтожили цель за ' + str(bullet) + ' выстрелов')
-        if not all_live:
-            for b in balls:
-                canvas.delete(b.id)
-            targets = []
-            balls = []
-        canvas.update()
-        time.sleep(z)
+                targets = []
+                balls = []
+            pygame.display.update()
+
+        text_score = font.render(str(glob_points), True, BLACK)
+        screen.blit(text_score, [30, 30])
+        pygame.display.update()
+        g1.power_up()
         g1.targetting()
         g1.power_up()
-    root.after(750, new_game)
+        screen.fill(WHITE)  # для исчезания прошлого рисунка
+    time.sleep(zleep)
+    new_game()
 
 
 new_game()
-
-tk.mainloop()
